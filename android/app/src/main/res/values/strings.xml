@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">izCAD</string>
+    <string name="title_activity_main">izCAD</string>
+    <string name="package_name">com.izcad.viewer</string>
+    <string name="custom_url_scheme">com.izcad.viewer</string>
+</resources>

@@ -1,0 +1,34 @@
+node_modules/
+dist/
+.idea/
+.vscode/
+*.log
+.DS_Store
+
+# Android local and generated files
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.cxx/
+*.apk
+*.aab
+
+# Signing credentials and service configuration
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+/izCADkeystore/
+
+# Local caches and inspection files
+.npm-cache/
+.inspection/
+
+# Local-only project material
+/Rules/
+/tests/
+/GITHUB_YAYIN_REHBERI.md
+/KALAN_ISLER_VE_UYGULAMA_YOL_HARITASI.md
+/PLAY_DATA_SAFETY.md
