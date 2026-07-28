@@ -13,8 +13,8 @@ kaynak bir Android uygulamasıdır.
 
 ## Ana lisans
 
-izCAD kaynak kodu ve dağıtılan uygulama, GNU General Public License version 2
-koşulları altında, yalnızca GPL-2.0-only olarak yayımlanır. Tam metin `LICENSE`
+izCAD kaynak kodu ve dağıtılan uygulama, GNU General Public License version 3
+koşulları altında, yalnızca GPL-3.0-only olarak yayımlanır. Tam metin `LICENSE`
 dosyasındadır.
 
 ## Üçüncü taraf bileşenleri
@@ -30,7 +30,6 @@ Projeyle birlikte dağıtılan ilgili lisans metinleri:
 - `LICENSE-MPL-2.0.txt`
 - `LICENSE-REACT-MIT.txt`
 - `LICENSE-THREE-MIT.txt`
-
 
 Bu bildirim, herhangi bir üçüncü taraf markasının izCAD'i desteklediği veya
 onayladığı anlamına gelmez.

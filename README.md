@@ -25,7 +25,7 @@ görüntülemek için geliştirilmiş açık kaynak bir CAD görüntüleyicidir.
 ### Özellikler
 
 - DXF ve DWG dosyalarını cihazdan seçme
-- DWG dosyalarını cihaz üzerinde libdxfrw WebAssembly ile DXF'e dönüştürme
+- DWG dosyalarını cihaz üzerinde LibreDWG WebAssembly ile DXF'e dönüştürme
 - Çevrimdışı çalışma; Android `INTERNET` izni yok
 - Pan ve iki parmakla yakınlaştırma
 - Yakınlaştır, uzaklaştır, ekrana sığdır ve görünümü sıfırla
@@ -50,7 +50,7 @@ bozuk nesneler kontrollü bir hata oluşturabilir.
 - Capacitor Android
 - Capacitor Browser (yalnızca kullanıcı yasal/kaynak bağlantısına dokunduğunda)
 - dxf-viewer ve Three.js
-- `@mlightcad/libdxfrw-web@0.1.0`
+- `@mlightcad/libredwg-web@0.7.9`
 - Web Worker ve WebAssembly
 
 DWG dosyası ayrı bir Web Worker içinde DXF'e dönüştürülür. Elde edilen DXF
@@ -111,11 +111,11 @@ izCAD kişisel veri toplamaz veya paylaşmaz. Seçilen çizimler yalnızca cihaz
 
 Copyright (C) 2026 İZ
 
-izCAD, yalnızca GNU General Public License version 2
-([GPL-2.0-only](LICENSE)) koşullarıyla yayımlanır. Üçüncü taraf bildirimleri
+izCAD, yalnızca GNU General Public License version 3
+([GPL-3.0-only](LICENSE)) koşullarıyla yayımlanır. Üçüncü taraf bildirimleri
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) dosyasındadır.
 
-APK dağıtılırken aynı sürüme ait kaynak kodu ve libdxfrw'nin karşılık gelen
+APK dağıtılırken aynı sürüme ait kaynak kodu ve LibreDWG'nin karşılık gelen
 kaynak kodu da erişilebilir tutulmalıdır.
 
 ### Katkıda bulunma
@@ -137,7 +137,7 @@ upload them to a server.
 ### Features
 
 - Select DXF and DWG files from the device
-- Convert DWG to DXF locally with libdxfrw WebAssembly
+- Convert DWG to DXF locally with LibreDWG WebAssembly
 - Fully offline operation with no Android `INTERNET` permission
 - Pan and pinch-to-zoom
 - Zoom in, zoom out, fit to screen, and reset view
@@ -162,7 +162,7 @@ produce a controlled error.
 - Capacitor Android
 - Capacitor Browser (only when the user opens a legal/source link)
 - dxf-viewer and Three.js
-- `@mlightcad/libdxfrw-web@0.1.0`
+- `@mlightcad/libredwg-web@0.7.9`
 - Web Workers and WebAssembly
 
 The DWG file is converted to DXF in a dedicated Web Worker. The resulting DXF
@@ -223,12 +223,12 @@ only on the device.
 
 Copyright (C) 2026 İZ
 
-izCAD is released exclusively under the GNU General Public License version 2
-([GPL-2.0-only](LICENSE)). Third-party notices are available in
+izCAD is released exclusively under the GNU General Public License version 3
+([GPL-3.0-only](LICENSE)). Third-party notices are available in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 When an APK is distributed, the matching izCAD source and corresponding
-libdxfrw source must remain available.
+LibreDWG source must remain available.
 
 ### Contributing
 

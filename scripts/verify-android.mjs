@@ -34,6 +34,28 @@ const stringsPath = resolve(
   "values",
   "strings.xml",
 );
+const mainActivityPath = resolve(
+  "android",
+  "app",
+  "src",
+  "main",
+  "java",
+  "com",
+  "izcad",
+  "viewer",
+  "MainActivity.java",
+);
+const incomingDrawingPluginPath = resolve(
+  "android",
+  "app",
+  "src",
+  "main",
+  "java",
+  "com",
+  "izcad",
+  "viewer",
+  "IncomingDrawingPlugin.java",
+);
 const webIndexPath = resolve(
   "android",
   "app",
@@ -43,15 +65,15 @@ const webIndexPath = resolve(
   "public",
   "index.html",
 );
-const libDxfrwJsPath = resolve(
+const libreDwgJsPath = resolve(
   "public",
   "wasm",
-  "libdxfrw-web.js",
+  "libredwg-web.js",
 );
-const libDxfrwWasmPath = resolve(
+const libreDwgWasmPath = resolve(
   "public",
   "wasm",
-  "libdxfrw.wasm",
+  "libredwg-web.wasm",
 );
 const drawingFontPath = resolve(
   "public",
@@ -74,11 +96,14 @@ const requiredPackagedNotices = [
   "THIRD_PARTY_LICENSES.md",
 ];
 
-const [variables, manifest, strings] = await Promise.all([
-  readFile(variablesPath, "utf8"),
-  readFile(manifestPath, "utf8"),
-  readFile(stringsPath, "utf8"),
-]);
+const [variables, manifest, strings, mainActivity, incomingDrawingPlugin] =
+  await Promise.all([
+    readFile(variablesPath, "utf8"),
+    readFile(manifestPath, "utf8"),
+    readFile(stringsPath, "utf8"),
+    readFile(mainActivityPath, "utf8"),
+    readFile(incomingDrawingPluginPath, "utf8"),
+  ]);
 
 check(
   "Minimum Android version",
@@ -101,6 +126,23 @@ check(
   "Android cleartext traffic must remain disabled.",
 );
 check(
+  "Android Open with support",
+  /android\.intent\.action\.VIEW/.test(manifest) &&
+    /android\.intent\.category\.DEFAULT/.test(manifest) &&
+    /android:mimeType="image\/vnd\.dwg"/.test(manifest) &&
+    /android:mimeType="application\/dxf"/.test(manifest),
+  "The main activity must advertise DXF and DWG ACTION_VIEW support.",
+);
+check(
+  "Incoming drawing bridge",
+  /registerPlugin\(IncomingDrawingPlugin\.class\)/.test(mainActivity) &&
+    /@CapacitorPlugin\(name\s*=\s*"IncomingDrawing"\)/.test(
+      incomingDrawingPlugin,
+    ) &&
+    /handleOnNewIntent\(Intent intent\)/.test(incomingDrawingPlugin),
+  "The native bridge must pass Android file intents to the web application.",
+);
+check(
   "Synced web application",
   await exists(webIndexPath),
   "Run npm run android:sync after changing web code.",
@@ -111,20 +153,20 @@ check(
   "The local TTF font is required for DXF TEXT and MTEXT entities.",
 );
 check(
-  "libdxfrw JavaScript runtime",
-  await exists(libDxfrwJsPath),
+  "LibreDWG JavaScript runtime",
+  await exists(libreDwgJsPath),
   "Run npm run build to copy the pinned DWG runtime.",
 );
 check(
-  "libdxfrw WebAssembly runtime",
-  await exists(libDxfrwWasmPath),
+  "LibreDWG WebAssembly runtime",
+  await exists(libreDwgWasmPath),
   "Run npm run build to copy the pinned DWG runtime.",
 );
 check(
   "Android DWG runtime",
   await Promise.all([
-    "libdxfrw-web.js",
-    "libdxfrw.wasm",
+    "libredwg-web.js",
+    "libredwg-web.wasm",
   ]).then((results) =>
     Promise.all(
       results.map((fileName) =>

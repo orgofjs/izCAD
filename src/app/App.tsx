@@ -3,11 +3,12 @@ import {
   Suspense,
   type MouseEvent,
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from "react";
 import { Browser } from "@capacitor/browser";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { ErrorScreen } from "../components/ErrorScreen";
 import { CloseIcon, ShieldIcon } from "../components/Icons";
 import { LanguageSwitch } from "../components/LanguageSwitch";
@@ -17,6 +18,11 @@ import { ViewerToolbar } from "../components/ViewerToolbar";
 import { convertDwgToDxf } from "../dwg/convertDwg";
 import { toDrawingFile } from "../files/fileTypes";
 import { useI18n } from "../i18n/I18nProvider";
+import {
+  incomingDrawingPlugin,
+  readIncomingDrawingFile,
+  type IncomingDrawing,
+} from "../native/incomingDrawing";
 import {
   AppError,
   type AppErrorCode,
@@ -42,7 +48,7 @@ type AppState =
       progress: number | null;
     }
   | { status: "viewer"; drawing: DrawingFile; renderFile: File }
-  | { status: "error"; code: AppErrorCode };
+  | { status: "error"; error: AppError };
 
 function formatBytes(bytes: number, locale: string): string {
   if (bytes < 1024) {
@@ -58,8 +64,10 @@ function formatBytes(bytes: number, locale: string): string {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value)} ${units[exponent - 1]}`;
 }
 
-function getErrorCode(error: unknown, fallback: AppErrorCode): AppErrorCode {
-  return error instanceof AppError ? error.code : fallback;
+function toAppError(error: unknown, fallback: AppErrorCode): AppError {
+  return error instanceof AppError
+    ? error
+    : new AppError(fallback, undefined, { cause: error });
 }
 
 function openExternalLink(event: MouseEvent<HTMLAnchorElement>): void {
@@ -76,9 +84,12 @@ export function App() {
   const [state, setState] = useState<AppState>({ status: "home" });
   const viewerRef = useRef<ViewerHandle>(null);
   const requestIdRef = useRef(0);
+  const incomingRequestIdRef = useRef(0);
+  const handledIncomingIdsRef = useRef(new Set<string>());
   const conversionAbortRef = useRef<AbortController | null>(null);
 
   const openFile = useCallback(async (file: File) => {
+    incomingRequestIdRef.current += 1;
     conversionAbortRef.current?.abort();
     conversionAbortRef.current = null;
     const requestId = ++requestIdRef.current;
@@ -89,7 +100,7 @@ export function App() {
     } catch (error) {
       setState({
         status: "error",
-        code: getErrorCode(error, "UNSUPPORTED_FORMAT"),
+        error: toAppError(error, "UNSUPPORTED_FORMAT"),
       });
       return;
     }
@@ -129,7 +140,7 @@ export function App() {
       if (requestId === requestIdRef.current) {
         setState({
           status: "error",
-          code: getErrorCode(error, "DWG_CONVERSION_FAILED"),
+          error: toAppError(error, "DWG_CONVERSION_FAILED"),
         });
       }
     } finally {
@@ -138,6 +149,87 @@ export function App() {
       }
     }
   }, []);
+
+  const openIncomingDrawing = useCallback(
+    async (incoming: IncomingDrawing) => {
+      if (handledIncomingIdsRef.current.has(incoming.id)) {
+        return;
+      }
+
+      handledIncomingIdsRef.current.add(incoming.id);
+      const incomingRequestId = ++incomingRequestIdRef.current;
+      const appRequestId = requestIdRef.current;
+      let file: File;
+
+      try {
+        file = await readIncomingDrawingFile(incoming);
+      } catch (error) {
+        if (
+          incomingRequestId === incomingRequestIdRef.current &&
+          appRequestId === requestIdRef.current
+        ) {
+          setState({
+            status: "error",
+            error: toAppError(error, "FILE_READ_FAILED"),
+          });
+        }
+        return;
+      } finally {
+        void incomingDrawingPlugin
+          .acknowledgeDrawing({ id: incoming.id })
+          .catch(() => undefined);
+      }
+
+      if (
+        incomingRequestId === incomingRequestIdRef.current &&
+        appRequestId === requestIdRef.current
+      ) {
+        await openFile(file);
+      }
+    },
+    [openFile],
+  );
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    let disposed = false;
+    let listener: PluginListenerHandle | null = null;
+
+    void (async () => {
+      listener = await incomingDrawingPlugin.addListener(
+        "drawingReceived",
+        (drawing) => {
+          if (!disposed) {
+            void openIncomingDrawing(drawing);
+          }
+        },
+      );
+
+      if (disposed) {
+        await listener.remove();
+        return;
+      }
+
+      const { drawing } = await incomingDrawingPlugin.getPendingDrawing();
+      if (drawing && !disposed) {
+        await openIncomingDrawing(drawing);
+      }
+    })().catch((error: unknown) => {
+      if (!disposed) {
+        console.error("Incoming drawing bridge could not be initialized.", error);
+      }
+    });
+
+    return () => {
+      disposed = true;
+      if (listener) {
+        void listener.remove();
+      }
+    };
+  }, [openIncomingDrawing]);
 
   const handleProgress = useCallback(
     (phase: LoadingPhase, processed: number, total: number) => {
@@ -173,11 +265,12 @@ export function App() {
   const handleViewerError = useCallback((error: unknown) => {
     setState({
       status: "error",
-      code: getErrorCode(error, "DXF_OPEN_FAILED"),
+      error: toAppError(error, "DXF_OPEN_FAILED"),
     });
   }, []);
 
   const closeDrawing = useCallback(() => {
+    incomingRequestIdRef.current += 1;
     requestIdRef.current += 1;
     conversionAbortRef.current?.abort();
     conversionAbortRef.current = null;
@@ -216,7 +309,7 @@ export function App() {
           <div className="wordmark">izCAD</div>
           <LanguageSwitch />
         </header>
-        <ErrorScreen code={state.code} onFile={openFile} />
+        <ErrorScreen error={state.error} onFile={openFile} />
       </div>
     );
   }

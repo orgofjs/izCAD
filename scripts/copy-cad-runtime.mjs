@@ -2,25 +2,25 @@ import {
   copyFile,
   mkdir,
   readFile,
-  writeFile,
+  rm,
 } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const libDxfrwPackageDirectory = resolve(
+const libreDwgPackageDirectory = resolve(
   "node_modules",
   "@mlightcad",
-  "libdxfrw-web",
+  "libredwg-web",
 );
-const libDxfrwMetadata = JSON.parse(
+const libreDwgMetadata = JSON.parse(
   await readFile(
-    resolve(libDxfrwPackageDirectory, "package.json"),
+    resolve(libreDwgPackageDirectory, "package.json"),
     "utf8",
   ),
 );
 
-if (libDxfrwMetadata.version !== "0.1.0") {
+if (libreDwgMetadata.version !== "0.7.9") {
   throw new Error(
-    `Expected @mlightcad/libdxfrw-web 0.1.0, found ${libDxfrwMetadata.version}.`,
+    `Expected @mlightcad/libredwg-web 0.7.9, found ${libreDwgMetadata.version}.`,
   );
 }
 
@@ -30,23 +30,26 @@ await mkdir(destinationDirectory, { recursive: true });
 await Promise.all([
   copyFile(
     resolve(
-      libDxfrwPackageDirectory,
-      "dist",
-      "libdxfrw.wasm",
+      libreDwgPackageDirectory,
+      "wasm",
+      "libredwg-web.js",
     ),
-    resolve(destinationDirectory, "libdxfrw.wasm"),
+    resolve(destinationDirectory, "libredwg-web.js"),
+  ),
+  copyFile(
+    resolve(
+      libreDwgPackageDirectory,
+      "wasm",
+      "libredwg-web.wasm",
+    ),
+    resolve(destinationDirectory, "libredwg-web.wasm"),
   ),
 ]);
 
-const libDxfrwSource = await readFile(
-  resolve(libDxfrwPackageDirectory, "dist", "libdxfrw.js"),
-  "utf8",
-);
-await writeFile(
-  resolve(destinationDirectory, "libdxfrw-web.js"),
-  `${libDxfrwSource}\nexport default createModule;\n`,
-  "utf8",
-);
+await Promise.all([
+  rm(resolve(destinationDirectory, "libdxfrw-web.js"), { force: true }),
+  rm(resolve(destinationDirectory, "libdxfrw.wasm"), { force: true }),
+]);
 
 const licenseDestinationDirectory = resolve("public", "licenses");
 await mkdir(licenseDestinationDirectory, { recursive: true });
@@ -74,5 +77,5 @@ await Promise.all(
 );
 
 console.log(
-  "Offline libdxfrw runtime and open-source notices copied to public assets.",
+  "Offline LibreDWG runtime and open-source notices copied to public assets.",
 );

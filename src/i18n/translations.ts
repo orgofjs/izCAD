@@ -24,8 +24,22 @@ const translations = {
     fileReadFailed: "The selected file could not be read.",
     dxfOpenFailed: "The DXF file could not be opened.",
     dwgConversionFailed: "The DWG file could not be converted.",
+    dwgUnsupportedVersion:
+      "This DWG version is not supported by the current drawing engine.",
+    dwgCorruptOrEncrypted:
+      "The DWG header could not be read. The file may be damaged, incomplete, or protected.",
+    dwgParseFailed:
+      "The DWG contains data or drawing objects that the current engine could not read.",
+    dwgExportFailed:
+      "The DWG was read, but a valid drawing could not be prepared for display.",
+    dwgMemoryLimit:
+      "This drawing exceeded the memory available to the DWG engine on this device.",
+    dwgConversionTimeout:
+      "Converting this DWG took too long and was stopped.",
     dwgRuntimeMissing:
-      "DWG support is not installed in this build. Add the offline libdxfrw runtime.",
+      "DWG support is not installed in this build. Add the offline LibreDWG runtime.",
+    dwgDiagnosticVersion: "DWG version",
+    dwgDiagnosticEngineCode: "Engine code",
     renderFailed: "This drawing could not be rendered on this device.",
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
@@ -59,8 +73,22 @@ const translations = {
     fileReadFailed: "Seçilen dosya okunamadı.",
     dxfOpenFailed: "DXF dosyası açılamadı.",
     dwgConversionFailed: "DWG dosyası dönüştürülemedi.",
+    dwgUnsupportedVersion:
+      "Bu DWG sürümü mevcut çizim motoru tarafından desteklenmiyor.",
+    dwgCorruptOrEncrypted:
+      "DWG başlığı okunamadı. Dosya bozuk, eksik veya korumalı olabilir.",
+    dwgParseFailed:
+      "DWG, mevcut motorun okuyamadığı veriler veya çizim nesneleri içeriyor.",
+    dwgExportFailed:
+      "DWG okundu ancak görüntüleme için geçerli bir çizim hazırlanamadı.",
+    dwgMemoryLimit:
+      "Bu çizim, cihazda DWG motoruna ayrılabilen bellek sınırını aştı.",
+    dwgConversionTimeout:
+      "Bu DWG'nin dönüştürülmesi çok uzun sürdüğü için işlem durduruldu.",
     dwgRuntimeMissing:
-      "Bu derlemede DWG desteği kurulu değil. Çevrimdışı libdxfrw çalışma dosyalarını ekleyin.",
+      "Bu derlemede DWG desteği kurulu değil. Çevrimdışı LibreDWG çalışma dosyalarını ekleyin.",
+    dwgDiagnosticVersion: "DWG sürümü",
+    dwgDiagnosticEngineCode: "Motor kodu",
     renderFailed: "Bu çizim cihazda görüntülenemedi.",
     zoomIn: "Yakınlaştır",
     zoomOut: "Uzaklaştır",

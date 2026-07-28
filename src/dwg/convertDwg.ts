@@ -1,5 +1,10 @@
 import { replaceExtension } from "../files/fileTypes";
-import { AppError } from "../types/drawing";
+import { inspectDwgInput } from "./diagnostics";
+import {
+  AppError,
+  type AppErrorCode,
+  type DwgDiagnostic,
+} from "../types/drawing";
 
 type DwgWorkerResponse =
   | {
@@ -10,7 +15,9 @@ type DwgWorkerResponse =
   | {
       id: number;
       status: "error";
+      code: AppErrorCode;
       message: string;
+      diagnostic: DwgDiagnostic;
     };
 
 const CONVERSION_TIMEOUT_MS = 3 * 60 * 1000;
@@ -31,6 +38,7 @@ function runConversionWorker(
     }
 
     const id = ++conversionId;
+    const diagnostic = inspectDwgInput(input);
     const worker = new Worker(
       new URL("../workers/dwg.worker.ts", import.meta.url),
       {
@@ -54,8 +62,9 @@ function runConversionWorker(
       cleanup();
       reject(
         new AppError(
-          "DWG_CONVERSION_FAILED",
+          "DWG_CONVERSION_TIMEOUT",
           "DWG conversion timed out.",
+          { details: { dwg: diagnostic } },
         ),
       );
     }, CONVERSION_TIMEOUT_MS);
@@ -74,8 +83,9 @@ function runConversionWorker(
       } else {
         reject(
           new AppError(
-            "DWG_CONVERSION_FAILED",
+            response.code,
             response.message,
+            { details: { dwg: response.diagnostic } },
           ),
         );
       }
@@ -87,6 +97,7 @@ function runConversionWorker(
         new AppError(
           "DWG_RUNTIME_MISSING",
           event.message || "DWG conversion worker could not start.",
+          { details: { dwg: diagnostic } },
         ),
       );
     };

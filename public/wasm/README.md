@@ -1,8 +1,8 @@
-# libdxfrw offline runtime
+# LibreDWG offline runtime
 
 The application contains one pinned, device-local DWG to DXF engine:
 
-- `@mlightcad/libdxfrw-web@0.1.0`
+- `@mlightcad/libredwg-web@0.7.9`
 
 `npm run build` runs `scripts/copy-cad-runtime.mjs`, which copies its
 JavaScript and WebAssembly files into this directory. Vite then copies them
