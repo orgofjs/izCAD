@@ -4,10 +4,21 @@ import {
   inspectDwgInput,
   isLikelyMemoryError,
 } from "../dwg/diagnostics";
+import {
+  restoreDxfLayerStates,
+  type SavedDwgLayerState,
+  type SavedDwgLayerStates,
+} from "../dwg/layerVisibility";
+import { annotateDxfXclips } from "../dwg/xclipMetadata";
 import type {
   AppErrorCode,
   DwgDiagnostic,
 } from "../types/drawing";
+import {
+  normalizeSavedDrawingView,
+  type DrawingPoint,
+  type SavedDrawingView,
+} from "../viewer/savedView";
 
 type DwgRequest = {
   id: number;
@@ -19,6 +30,7 @@ type DwgSuccess = {
   id: number;
   status: "success";
   output: ArrayBuffer;
+  savedView: SavedDrawingView | null;
 };
 
 type DwgFailure = {
@@ -37,6 +49,22 @@ type LibreDwgFileSystem = {
 
 type LibreDwgModule = {
   FS: LibreDwgFileSystem;
+  dwg_abandon(data: number): void;
+  dwg_dynapi_entity_value(
+    object: number,
+    field: string,
+  ): { data?: unknown } | null;
+  dwg_free(data: number): void;
+  dwg_get_num_objects(data: number): number;
+  dwg_get_object(data: number, index: number): number;
+  dwg_obj_layer_get_name(layer: number): string;
+  dwg_obj_table_get_name(table: number): string;
+  dwg_object_get_fixedtype(object: number): number;
+  dwg_object_to_object_tio(object: number): number;
+  dwg_read_file(inputPath: string): {
+    data: number;
+    error: number;
+  };
   dwg_write_dxf(inputPath: string, outputPath: string): number;
 };
 
@@ -88,6 +116,186 @@ function unlinkIfPresent(
     fileSystem.unlink(path);
   } catch {
     // The conversion may fail before a temporary file is created.
+  }
+}
+
+function dynapiBoolean(
+  runtime: LibreDwgModule,
+  object: number,
+  field: string,
+): boolean {
+  return Boolean(
+    runtime.dwg_dynapi_entity_value(object, field)?.data,
+  );
+}
+
+function dynapiData(
+  runtime: LibreDwgModule,
+  object: number,
+  field: string,
+): unknown {
+  return runtime.dwg_dynapi_entity_value(object, field)?.data;
+}
+
+function dynapiNumber(
+  runtime: LibreDwgModule,
+  object: number,
+  field: string,
+): number | undefined {
+  const value = dynapiData(runtime, object, field);
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function dynapiPoint(
+  runtime: LibreDwgModule,
+  object: number,
+  field: string,
+): DrawingPoint | null {
+  const value = dynapiData(runtime, object, field);
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const point = value as { x?: unknown; y?: unknown };
+  return typeof point.x === "number" &&
+    Number.isFinite(point.x) &&
+    typeof point.y === "number" &&
+    Number.isFinite(point.y)
+    ? { x: point.x, y: point.y }
+    : null;
+}
+
+type SavedDwgMetadata = {
+  layerStates: SavedDwgLayerStates | null;
+  savedView: SavedDrawingView | null;
+};
+
+function readSavedDwgMetadata(
+  runtime: LibreDwgModule,
+  inputPath: string,
+): SavedDwgMetadata {
+  const layerType = 51;
+  const viewportType = 65;
+  let data = 0;
+
+  try {
+    const result = runtime.dwg_read_file(inputPath);
+    data = result.data;
+    const fatalReadErrorMask = 1024 | 2048 | 4096 | 8192;
+    if (!data || (result.error & fatalReadErrorMask) !== 0) {
+      return {
+        layerStates: null,
+        savedView: null,
+      };
+    }
+
+    const states = new Map<string, SavedDwgLayerState>();
+    let savedView: SavedDrawingView | null = null;
+    let activeViewportView: SavedDrawingView | null = null;
+    const objectCount = runtime.dwg_get_num_objects(data);
+    for (let index = 0; index < objectCount; index += 1) {
+      const object = runtime.dwg_get_object(data, index);
+      const fixedType = runtime.dwg_object_get_fixedtype(object);
+      if (fixedType === viewportType) {
+        const viewport = runtime.dwg_object_to_object_tio(object);
+        const center = dynapiPoint(runtime, viewport, "VIEWCTR");
+        const viewHeight = dynapiNumber(
+          runtime,
+          viewport,
+          "VIEWSIZE",
+        );
+        if (!center || viewHeight === undefined) {
+          continue;
+        }
+
+        const candidate = normalizeSavedDrawingView({
+          center,
+          viewHeight,
+          aspectRatio: dynapiNumber(
+            runtime,
+            viewport,
+            "aspect_ratio",
+          ),
+          twistAngle: dynapiNumber(
+            runtime,
+            viewport,
+            "view_twist",
+          ),
+        });
+        if (!candidate) {
+          continue;
+        }
+
+        savedView ??= candidate;
+        const name = runtime.dwg_obj_table_get_name(viewport);
+        const lowerLeft = dynapiPoint(
+          runtime,
+          viewport,
+          "lower_left",
+        );
+        const upperRight = dynapiPoint(
+          runtime,
+          viewport,
+          "upper_right",
+        );
+        const coversModelWindow =
+          lowerLeft?.x === 0 &&
+          lowerLeft.y === 0 &&
+          upperRight?.x === 1 &&
+          upperRight.y === 1;
+        if (
+          name.trim().toLocaleLowerCase() === "*active" ||
+          coversModelWindow
+        ) {
+          activeViewportView = candidate;
+        }
+        continue;
+      }
+
+      if (fixedType !== layerType) {
+        continue;
+      }
+
+      const layer = runtime.dwg_object_to_object_tio(object);
+      const name = runtime.dwg_obj_layer_get_name(layer);
+      if (!name) {
+        continue;
+      }
+
+      states.set(name, {
+        off: dynapiBoolean(runtime, layer, "off"),
+        frozen: dynapiBoolean(runtime, layer, "frozen"),
+        frozenInNewViewport: dynapiBoolean(
+          runtime,
+          layer,
+          "frozen_in_new",
+        ),
+      });
+    }
+
+    return {
+      layerStates: states.size > 0 ? states : null,
+      savedView: activeViewportView ?? savedView,
+    };
+  } catch {
+    return {
+      layerStates: null,
+      savedView: null,
+    };
+  } finally {
+    if (data) {
+      try {
+        runtime.dwg_free(data);
+      } catch {
+        try {
+          runtime.dwg_abandon(data);
+        } catch {
+          // The runtime will be discarded with the conversion worker.
+        }
+      }
+    }
   }
 }
 
@@ -145,7 +353,10 @@ async function loadRuntime(
 async function convertWithLibreDwg(
   input: ArrayBuffer,
   baseUrl: string,
-): Promise<ArrayBuffer> {
+): Promise<{
+  output: ArrayBuffer;
+  savedView: SavedDrawingView | null;
+}> {
   const diagnostic = inspectDwgInput(input);
   let nativeError = "";
   const runtime = await loadRuntime(
@@ -162,6 +373,7 @@ async function convertWithLibreDwg(
 
   try {
     runtime.FS.writeFile(inputPath, new Uint8Array(input));
+    const savedMetadata = readSavedDwgMetadata(runtime, inputPath);
     const errorValue = runtime.dwg_write_dxf(inputPath, outputPath);
     const diagnosticWithEngineCode: DwgDiagnostic = {
       ...diagnostic,
@@ -176,7 +388,12 @@ async function convertWithLibreDwg(
       );
     }
 
-    const output = runtime.FS.readFile(outputPath);
+    const output = annotateDxfXclips(
+      restoreDxfLayerStates(
+        runtime.FS.readFile(outputPath),
+        savedMetadata.layerStates,
+      ),
+    );
     const outputPrefix = output.subarray(
       0,
       Math.min(output.byteLength, 4096),
@@ -196,12 +413,16 @@ async function convertWithLibreDwg(
       );
     }
 
-    return (
+    const outputBuffer = (
       output.byteOffset === 0 &&
       output.byteLength === output.buffer.byteLength
         ? output.buffer
         : output.slice().buffer
     ) as ArrayBuffer;
+    return {
+      output: outputBuffer,
+      savedView: savedMetadata.savedView,
+    };
   } catch (error) {
     if (error instanceof DwgWorkerError) {
       throw error;
@@ -225,11 +446,15 @@ workerScope.onmessage = async (event: MessageEvent<DwgRequest>) => {
   const { id, input, baseUrl } = event.data;
 
   try {
-    const output = await convertWithLibreDwg(input, baseUrl);
+    const { output, savedView } = await convertWithLibreDwg(
+      input,
+      baseUrl,
+    );
     const response: DwgSuccess = {
       id,
       status: "success",
       output,
+      savedView,
     };
     workerScope.postMessage(response, [output]);
   } catch (error) {

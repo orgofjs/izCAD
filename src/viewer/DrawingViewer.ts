@@ -1,6 +1,14 @@
 import { DxfViewer } from "dxf-viewer";
-import { Color } from "three";
+import { Color, Vector3 } from "three";
 import type { LoadingPhase, ViewerCommand } from "../types/drawing";
+import {
+  getSavedDrawingView,
+  resolveSavedDrawingView,
+  type SavedDrawingView,
+} from "./savedView";
+import { installXclipRendering } from "./xclipRendering";
+
+installXclipRendering(DxfViewer);
 
 const DRAWING_FONT_URL = new URL(
   "fonts/IzCadSans-Regular.ttf",
@@ -16,6 +24,7 @@ type ProgressCallback = (
 export class DrawingViewer {
   private readonly viewer: DxfViewer;
   private objectUrl: string | null = null;
+  private savedView: SavedDrawingView | null = null;
 
   constructor(container: HTMLElement) {
     this.viewer = new DxfViewer(container, {
@@ -33,6 +42,7 @@ export class DrawingViewer {
 
   async load(file: File, onProgress: ProgressCallback): Promise<void> {
     this.releaseObjectUrl();
+    this.savedView = getSavedDrawingView(file);
     this.objectUrl = URL.createObjectURL(file);
 
     await this.viewer.Load({
@@ -47,6 +57,8 @@ export class DrawingViewer {
           name: "izcad-dxf-worker",
       }),
     });
+
+    this.applySavedView();
   }
 
   execute(command: ViewerCommand): void {
@@ -58,8 +70,12 @@ export class DrawingViewer {
         this.zoom(0.8);
         break;
       case "fit":
-      case "reset":
         this.fit();
+        break;
+      case "reset":
+        if (!this.applySavedView()) {
+          this.fit();
+        }
         break;
     }
   }
@@ -93,6 +109,28 @@ export class DrawingViewer {
       0.12,
     );
     this.viewer.Render();
+  }
+
+  private applySavedView(): boolean {
+    const canvas = this.viewer.GetCanvas();
+    const viewportAspect = canvas.width / canvas.height;
+    const origin = this.viewer.GetOrigin();
+    const resolved = resolveSavedDrawingView(
+      this.savedView,
+      this.viewer.GetBounds(),
+      origin,
+      viewportAspect,
+    );
+    if (!resolved) {
+      return false;
+    }
+
+    this.viewer.SetView(
+      new Vector3(resolved.center.x, resolved.center.y, 0),
+      resolved.width,
+    );
+    this.viewer.Render();
+    return true;
   }
 
   private releaseObjectUrl(): void {

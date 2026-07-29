@@ -3,11 +3,11 @@ import {
   type AppErrorCode,
 } from "../types/drawing";
 import { useI18n } from "../i18n/I18nProvider";
-import { OpenFileButton } from "./OpenFileButton";
+import { FolderIcon } from "./Icons";
 
 type Props = {
   error: AppError;
-  onFile(file: File): void;
+  onOpenLibrary(): void;
 };
 
 const errorTranslation = {
@@ -25,7 +25,7 @@ const errorTranslation = {
   RENDER_FAILED: "renderFailed",
 } as const;
 
-export function ErrorScreen({ error, onFile }: Props) {
+export function ErrorScreen({ error, onOpenLibrary }: Props) {
   const { t } = useI18n();
   const diagnostic = error.details?.dwg;
 
@@ -51,7 +51,10 @@ export function ErrorScreen({ error, onFile }: Props) {
           ) : null}
         </dl>
       ) : null}
-      <OpenFileButton onFile={onFile} />
+      <button type="button" className="open-button" onClick={onOpenLibrary}>
+        <FolderIcon />
+        <span>{t("myDrawings")}</span>
+      </button>
     </main>
   );
 }

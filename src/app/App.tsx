@@ -9,15 +9,19 @@ import {
 } from "react";
 import { Browser } from "@capacitor/browser";
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
+import { DrawingLibrary } from "../components/DrawingLibrary";
 import { ErrorScreen } from "../components/ErrorScreen";
-import { CloseIcon, ShieldIcon } from "../components/Icons";
+import { CloseIcon, FolderIcon, ShieldIcon } from "../components/Icons";
 import { LanguageSwitch } from "../components/LanguageSwitch";
 import { LoadingScreen } from "../components/LoadingScreen";
-import { OpenFileButton } from "../components/OpenFileButton";
 import { ViewerToolbar } from "../components/ViewerToolbar";
 import { convertDwgToDxf } from "../dwg/convertDwg";
 import { toDrawingFile } from "../files/fileTypes";
 import { useI18n } from "../i18n/I18nProvider";
+import {
+  importDrawingToLibrary,
+  ROOT_FOLDER_ID,
+} from "../library/drawingLibrary";
 import {
   incomingDrawingPlugin,
   readIncomingDrawingFile,
@@ -82,13 +86,14 @@ function openExternalLink(event: MouseEvent<HTMLAnchorElement>): void {
 export function App() {
   const { locale, t } = useI18n();
   const [state, setState] = useState<AppState>({ status: "home" });
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const viewerRef = useRef<ViewerHandle>(null);
   const requestIdRef = useRef(0);
   const incomingRequestIdRef = useRef(0);
   const handledIncomingIdsRef = useRef(new Set<string>());
   const conversionAbortRef = useRef<AbortController | null>(null);
 
-  const openFile = useCallback(async (file: File) => {
+  const openFile = useCallback(async (file: File, libraryEntryId?: string) => {
     incomingRequestIdRef.current += 1;
     conversionAbortRef.current?.abort();
     conversionAbortRef.current = null;
@@ -105,6 +110,7 @@ export function App() {
       return;
     }
 
+    setLibraryOpen(false);
     setState({
       status: "loading",
       drawing,
@@ -112,6 +118,12 @@ export function App() {
       phase: drawing.format === "dwg" ? "converting" : "reading",
       progress: null,
     });
+
+    if (!libraryEntryId) {
+      void importDrawingToLibrary(file, ROOT_FOLDER_ID).catch((error: unknown) => {
+        console.warn("Drawing could not be saved to the local library.", error);
+      });
+    }
 
     const conversionController =
       drawing.format === "dwg" ? new AbortController() : null;
@@ -302,6 +314,15 @@ export function App() {
       </Suspense>
     ) : null;
 
+  if (libraryOpen) {
+    return (
+      <DrawingLibrary
+        onClose={() => setLibraryOpen(false)}
+        onOpen={(file, libraryEntryId) => openFile(file, libraryEntryId)}
+      />
+    );
+  }
+
   if (state.status === "error") {
     return (
       <div className="app-shell">
@@ -309,7 +330,10 @@ export function App() {
           <div className="wordmark">izCAD</div>
           <LanguageSwitch />
         </header>
-        <ErrorScreen error={state.error} onFile={openFile} />
+        <ErrorScreen
+          error={state.error}
+          onOpenLibrary={() => setLibraryOpen(true)}
+        />
       </div>
     );
   }
@@ -346,7 +370,14 @@ export function App() {
             <p className="eyebrow">ANDROID CAD VIEWER</p>
             <h1>{t("tagline")}</h1>
             <p className="lead">{t("description")}</p>
-            <OpenFileButton onFile={openFile} />
+            <button
+              type="button"
+              className="open-button"
+              onClick={() => setLibraryOpen(true)}
+            >
+              <FolderIcon />
+              <span>{t("myDrawings")}</span>
+            </button>
 
             <div className="feature-row">
               <div>
@@ -412,7 +443,16 @@ export function App() {
           </div>
         </div>
         <div className="viewer-header-actions">
-          <OpenFileButton compact onFile={openFile} />
+          <button
+            type="button"
+            className="open-button compact"
+            aria-label={t("myDrawings")}
+            title={t("myDrawings")}
+            onClick={() => setLibraryOpen(true)}
+          >
+            <FolderIcon />
+            <span>{t("myDrawings")}</span>
+          </button>
           <button
             type="button"
             className="icon-button"

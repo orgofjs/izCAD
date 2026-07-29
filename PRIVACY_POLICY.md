@@ -28,6 +28,13 @@ kendisi seçer. Seçilen çizim cihaz üzerinde ve çevrimdışı işlenir. Dosy
 içeriği geliştiriciye veya üçüncü taraf bir sunucuya gönderilmez. izCAD
 çizimleri bir bulut hesabına yüklemez ve kendi sunucusunda saklamaz.
 
+Kullanıcının açtığı çizimlerin bir kopyası, daha sonra hızlı erişim sağlamak
+amacıyla izCAD'in cihazdaki uygulamaya özel Çizim Kitaplığı alanında
+saklanabilir. Kullanıcı bu yerel kopyaları uygulama içinde klasörlere ayırabilir,
+kopyalayabilir, taşıyabilir, yeniden adlandırabilir veya silebilir. Bu işlemler
+yalnızca cihazda gerçekleştirilir. Kitaplıktaki dosyalar uygulama verileri
+temizlendiğinde veya uygulama kaldırıldığında Android tarafından silinir.
+
 Android'in sistem dosya seçicisi veya kullanıcının seçtiği harici dosya
 sağlayıcısı kendi koşullarına ve gizlilik politikasına tabi olabilir.
 
@@ -79,6 +86,13 @@ picker. The selected drawing is processed locally and offline on the device.
 Its contents are not transmitted to the developer or any third-party server.
 izCAD does not upload drawings to a cloud account or store them on its own
 servers.
+
+A copy of a drawing opened by the user may be stored in izCAD's app-private
+Drawing Library on the device for faster later access. The user can organize,
+copy, move, rename, or delete these local copies inside the application. All
+such operations take place only on the device. Library files are removed by
+Android when the user clears the application's data or uninstalls the
+application.
 
 Android's system file picker or an external document provider selected by the
 user may be governed by that provider's own terms and privacy policy.

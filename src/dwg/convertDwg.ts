@@ -5,12 +5,17 @@ import {
   type AppErrorCode,
   type DwgDiagnostic,
 } from "../types/drawing";
+import {
+  registerSavedDrawingView,
+  type SavedDrawingView,
+} from "../viewer/savedView";
 
 type DwgWorkerResponse =
   | {
       id: number;
       status: "success";
       output: ArrayBuffer;
+      savedView: SavedDrawingView | null;
     }
   | {
       id: number;
@@ -30,7 +35,10 @@ function abortError(): DOMException {
 function runConversionWorker(
   input: ArrayBuffer,
   signal?: AbortSignal,
-): Promise<ArrayBuffer> {
+): Promise<{
+  output: ArrayBuffer;
+  savedView: SavedDrawingView | null;
+}> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       reject(abortError());
@@ -79,7 +87,10 @@ function runConversionWorker(
 
       cleanup();
       if (response.status === "success") {
-        resolve(response.output);
+        resolve({
+          output: response.output,
+          savedView: response.savedView,
+        });
       } else {
         reject(
           new AppError(
@@ -119,9 +130,12 @@ export async function convertDwgToDxf(
 ): Promise<File> {
   try {
     const input = await file.arrayBuffer();
-    const output = await runConversionWorker(input, signal);
+    const { output, savedView } = await runConversionWorker(
+      input,
+      signal,
+    );
 
-    return new File(
+    const renderFile = new File(
       [output],
       replaceExtension(file.name, "dxf"),
       {
@@ -129,6 +143,8 @@ export async function convertDwgToDxf(
         lastModified: Date.now(),
       },
     );
+    registerSavedDrawingView(renderFile, savedView);
+    return renderFile;
   } catch (error) {
     if (
       error instanceof AppError ||

@@ -25,6 +25,8 @@ görüntülemek için geliştirilmiş açık kaynak bir CAD görüntüleyicidir.
 ### Özellikler
 
 - DXF ve DWG dosyalarını cihazdan seçme
+- Açılan çizimleri uygulamaya özel çevrimdışı Çizim Kitaplığı'nda saklama
+- Kitaplıkta klasör oluşturma, yeniden adlandırma, kopyalama, taşıma ve silme
 - DWG dosyalarını cihaz üzerinde LibreDWG WebAssembly ile DXF'e dönüştürme
 - Çevrimdışı çalışma; Android `INTERNET` izni yok
 - Pan ve iki parmakla yakınlaştırma
@@ -36,8 +38,10 @@ görüntülemek için geliştirilmiş açık kaynak bir CAD görüntüleyicidir.
 
 ### Kapsam
 
-izCAD yalnızca görüntüleyicidir. CAD düzenleme, ölçülendirme, dosya kaydetme,
-bulut senkronizasyonu ve kullanıcı hesabı özellikleri içermez.
+izCAD yalnızca görüntüleyicidir. Çizim içeriğini düzenleme, ölçülendirme, CAD
+formatında değişiklik kaydetme, bulut senkronizasyonu ve kullanıcı hesabı
+özellikleri içermez. Çizim Kitaplığı yalnızca kullanıcının seçtiği özgün
+DXF/DWG dosyasının cihazdaki uygulamaya özel bir kopyasını yönetir.
 
 DWG formatının çok sayıda sürümü ve üreticiye özel nesnesi bulunduğu için her
 DWG dosyasının eksiksiz görüntüleneceği garanti edilmez. Desteklenmeyen veya
@@ -137,6 +141,8 @@ upload them to a server.
 ### Features
 
 - Select DXF and DWG files from the device
+- Keep opened drawings in the app-private offline Drawing Library
+- Create folders and rename, copy, move, or delete library items
 - Convert DWG to DXF locally with LibreDWG WebAssembly
 - Fully offline operation with no Android `INTERNET` permission
 - Pan and pinch-to-zoom
@@ -148,8 +154,10 @@ upload them to a server.
 
 ### Scope
 
-izCAD is a viewer only. It does not include CAD editing, measurement, file
-saving, cloud synchronization, or user accounts.
+izCAD is a viewer only. It does not edit drawing content, save CAD
+modifications, provide measurement, synchronize with the cloud, or use user
+accounts. The Drawing Library manages only an app-private on-device copy of
+the original DXF/DWG file selected by the user.
 
 DWG has many versions and vendor-specific objects, so complete rendering of
 every DWG file cannot be guaranteed. Unsupported or damaged objects may
@@ -214,7 +222,8 @@ android/app/build/outputs/apk/debug/app-debug.apk
 ### Privacy
 
 izCAD does not collect or share personal data. Selected drawings are processed
-only on the device.
+only on the device and may be retained in the app-private Drawing Library
+until the user deletes them, clears app data, or uninstalls the application.
 
 - [Privacy policy](https://sites.google.com/view/izcad-gp-pp/ana-sayfa)
 - [Play Data Safety preparation](PLAY_DATA_SAFETY.md)
